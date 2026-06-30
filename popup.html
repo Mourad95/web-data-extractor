@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auchan Drive Helper</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Auchan Drive</p>
+          <h1>Shopping Helper</h1>
+        </div>
+        <span class="status-dot" aria-hidden="true"></span>
+      </header>
+
+      <section class="toolbar" aria-label="Scan controls">
+        <button id="scanPage" class="button primary" type="button">
+          <span>Start Scan</span>
+        </button>
+        <button id="scanList" class="button secondary" type="button">
+          <span>Scan Shopping List</span>
+        </button>
+      </section>
+
+      <section class="feedback" aria-live="polite">
+        <div id="spinner" class="spinner" hidden></div>
+        <p id="statusText">Open an Auchan page, then start a scan.</p>
+      </section>
+
+      <section class="results-panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Product</th>
+                <th scope="col">Price</th>
+                <th scope="col">Qty</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              <tr class="empty-row">
+                <td colspan="3">No results yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div>
+            <span>Subtotal</span>
+            <strong id="subtotal">0,00 €</strong>
+          </div>
+          <div>
+            <span>BIENVENUE20</span>
+            <strong id="discount">0,00 €</strong>
+          </div>
+          <div class="total">
+            <span>Total</span>
+            <strong id="total">0,00 €</strong>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <button id="exportResults" class="button export" type="button" disabled>Export</button>
+      </footer>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
