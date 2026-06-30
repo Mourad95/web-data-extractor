@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "E-commerce Price Scanner",
-  "description": "Scan product pages and build a cheapest-price shopping list across e-commerce sites.",
+  "name": "Web Data Extractor",
+  "description": "Extract text and attributes from web pages with custom CSS selectors.",
   "version": "1.0.0",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://*/*", "http://*/*"],
+  "permissions": ["storage", "activeTab", "scripting", "tabs", "webRequest", "debugger"],
+  "host_permissions": ["https://*/*", "http://*/*", "http://localhost/*", "ws://localhost/*"],
   "action": {
-    "default_title": "E-commerce Price Scanner",
+    "default_title": "Web Data Extractor",
     "default_popup": "popup.html"
   },
   "background": {
