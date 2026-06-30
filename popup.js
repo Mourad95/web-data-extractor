@@ -1,6 +1,6 @@
 "use strict";
 
-const SHOPPING_LIST = [
+const DEFAULT_SHOPPING_LIST = [
   "blanc de poulet 1kg",
   "blanc de poulet 500g",
   "viande hachée 5% 500g",
@@ -31,15 +31,27 @@ const SHOPPING_LIST = [
   "graines de chia bio"
 ];
 
+const AUCHAN_SEARCH_URL = "https://www.auchan.fr/recherche?text={query}";
+const SEARCH_PARAM_NAMES = ["q", "query", "search", "text", "s", "keyword"];
 const PROMO_THRESHOLD = 80;
 const PROMO_DISCOUNT = 20;
 
 const state = {
   results: [],
-  busy: false
+  busy: false,
+  activeTab: null,
+  hostname: ""
 };
 
 const elements = {
+  configForm: document.getElementById("configForm"),
+  searchUrl: document.getElementById("searchUrl"),
+  nameSelector: document.getElementById("nameSelector"),
+  priceSelector: document.getElementById("priceSelector"),
+  addToCartSelector: document.getElementById("addToCartSelector"),
+  quantitySelector: document.getElementById("quantitySelector"),
+  productList: document.getElementById("productList"),
+  saveConfig: document.getElementById("saveConfig"),
   scanPage: document.getElementById("scanPage"),
   scanList: document.getElementById("scanList"),
   exportResults: document.getElementById("exportResults"),
@@ -48,16 +60,41 @@ const elements = {
   discount: document.getElementById("discount"),
   total: document.getElementById("total"),
   spinner: document.getElementById("spinner"),
-  statusText: document.getElementById("statusText")
+  statusText: document.getElementById("statusText"),
+  domainLabel: document.getElementById("domainLabel")
 };
 
 document.addEventListener("DOMContentLoaded", init);
 
-function init() {
+async function init() {
   elements.scanPage.addEventListener("click", scanCurrentPage);
   elements.scanList.addEventListener("click", scanShoppingList);
+  elements.saveConfig.addEventListener("click", saveConfiguration);
   elements.exportResults.addEventListener("click", exportResults);
-  restoreResults();
+  elements.productList.addEventListener("change", saveShoppingList);
+
+  try {
+    state.activeTab = await getActiveTab();
+    state.hostname = getHostname(state.activeTab.url);
+    elements.domainLabel.textContent = state.hostname || "Current website";
+    await loadConfiguration();
+    await restoreResults();
+    setStatus("Ready to scan this page or a configured search list.");
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
+async function loadConfiguration() {
+  const {
+    siteConfigurations = {},
+    shoppingList = DEFAULT_SHOPPING_LIST
+  } = await chrome.storage.local.get(["siteConfigurations", "shoppingList"]);
+
+  const saved = siteConfigurations[state.hostname] || {};
+  const defaults = getDefaultConfigForTab(state.activeTab);
+  setConfigFields({ ...defaults, ...saved });
+  elements.productList.value = normalizeList(shoppingList).join("\n");
 }
 
 async function restoreResults() {
@@ -67,21 +104,38 @@ async function restoreResults() {
   }
 }
 
+async function saveConfiguration() {
+  try {
+    const config = getConfigFromFields();
+    const { siteConfigurations = {} } = await chrome.storage.local.get("siteConfigurations");
+    await chrome.storage.local.set({
+      siteConfigurations: {
+        ...siteConfigurations,
+        [state.hostname]: config
+      }
+    });
+    await saveShoppingList();
+    setStatus(`Saved configuration for ${state.hostname}.`);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
+async function saveShoppingList() {
+  await chrome.storage.local.set({ shoppingList: getShoppingList() });
+}
+
 async function scanCurrentPage() {
-  setBusy(true, "Scanning visible products...");
+  setBusy(true, "Scanning current page with generic detection...");
 
   try {
-    const products = await sendContentMessage({ type: "SCAN_CURRENT_PAGE" });
-    const normalized = products.map((product) => ({
-      query: "",
-      name: product.name || "Unknown product",
-      price: product.price ?? null,
-      priceText: product.priceText || formatPrice(product.price),
-      quantity: 1,
-      url: product.url || ""
-    }));
+    const products = await sendContentMessage({
+      type: "SCAN_CURRENT_PAGE",
+      config: getConfigFromFields()
+    });
 
-    setResults(normalized, `Found ${normalized.length} visible products.`);
+    const normalized = products.map((product) => normalizeResult(product));
+    setResults(normalized, `Found ${normalized.length} products on this page.`);
   } catch (error) {
     setStatus(error.message, true);
   } finally {
@@ -90,27 +144,29 @@ async function scanCurrentPage() {
 }
 
 async function scanShoppingList() {
-  setResults([], "Starting shopping list scan...");
+  const list = getShoppingList();
+  if (!list.length) {
+    setStatus("Add at least one product to the custom list.", true);
+    return;
+  }
+
+  setResults([], "Starting custom list scan...");
   setBusy(true);
 
   const results = [];
+  const config = getConfigFromFields();
 
   try {
-    for (let index = 0; index < SHOPPING_LIST.length; index += 1) {
-      const query = SHOPPING_LIST[index];
-      setStatus(`Searching ${index + 1}/${SHOPPING_LIST.length}: ${query}`);
+    await saveShoppingList();
 
-      await navigateToSearch(query);
-      const product = await sendContentMessage({ type: "SEARCH_PRODUCT", query });
+    for (let index = 0; index < list.length; index += 1) {
+      const query = list[index];
+      setStatus(`Searching ${index + 1}/${list.length}: ${query}`);
+
+      await navigateToSearch(query, config);
+      const product = await sendContentMessage({ type: "SEARCH_PRODUCT", query, config });
       const row = product
-        ? {
-            query,
-            name: product.name || query,
-            price: product.price ?? null,
-            priceText: product.priceText || formatPrice(product.price),
-            quantity: 1,
-            url: product.url || ""
-          }
+        ? normalizeResult(product, query)
         : {
             query,
             name: "No matching product found",
@@ -121,11 +177,11 @@ async function scanShoppingList() {
           };
 
       results.push(row);
-      setResults(results, `Captured ${results.length}/${SHOPPING_LIST.length} products.`);
+      setResults(results, `Captured ${results.length}/${list.length} products.`);
       await chrome.storage.local.set({ shoppingListResults: results });
     }
 
-    setStatus("Shopping list scan complete.");
+    setStatus("Custom list scan complete.");
   } catch (error) {
     setStatus(error.message, true);
   } finally {
@@ -138,7 +194,7 @@ async function exportResults() {
   const discount = subtotal >= PROMO_THRESHOLD ? PROMO_DISCOUNT : 0;
   const total = Math.max(0, subtotal - discount);
   const lines = [
-    "Auchan Drive Helper",
+    "E-commerce Price Scanner",
     "",
     ...state.results.map((item, index) => {
       const query = item.query ? ` (${item.query})` : "";
@@ -155,16 +211,16 @@ async function exportResults() {
 }
 
 async function sendContentMessage(message) {
-  const tab = await getActiveAuchanTab();
+  const tab = await getActiveTab();
 
   try {
     const response = await chrome.tabs.sendMessage(tab.id, message);
     if (!response?.ok) {
-      throw new Error(response?.error || "The Auchan page did not return scan data.");
+      throw new Error(response?.error || "The page did not return scan data.");
     }
     return response.data;
   } catch (error) {
-    if (/Receiving end does not exist/i.test(error.message)) {
+    if (/Receiving end does not exist|Could not establish connection/i.test(error.message)) {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ["content.js"]
@@ -179,19 +235,35 @@ async function sendContentMessage(message) {
   }
 }
 
-async function navigateToSearch(query) {
-  const tab = await getActiveAuchanTab();
-  const url = `https://www.auchan.fr/recherche?text=${encodeURIComponent(query)}`;
+async function navigateToSearch(query, config) {
+  const tab = await getActiveTab();
+  const url = buildSearchUrl(query, config, tab);
 
   await chrome.tabs.update(tab.id, { url });
   await waitForTabLoad(tab.id);
 }
 
-async function getActiveAuchanTab() {
+function buildSearchUrl(query, config, tab) {
+  const template = cleanText(config.searchUrl) || getDefaultConfigForTab(tab).searchUrl;
+  if (!template) {
+    throw new Error("Add a search URL before scanning a custom list. Use {query} where the product should go.");
+  }
+
+  if (template.includes("{query}")) {
+    return template.replaceAll("{query}", encodeURIComponent(query));
+  }
+
+  const url = new URL(template, tab.url);
+  const existingParam = SEARCH_PARAM_NAMES.find((name) => url.searchParams.has(name)) || SEARCH_PARAM_NAMES[0];
+  url.searchParams.set(existingParam, query);
+  return url.href;
+}
+
+async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  if (!tab?.id || !tab.url?.startsWith("https://www.auchan.fr/")) {
-    throw new Error("Open a https://www.auchan.fr/ tab before scanning.");
+  if (!tab?.id || !/^https?:\/\//i.test(tab.url || "")) {
+    throw new Error("Open an HTTP or HTTPS e-commerce page before scanning.");
   }
 
   return tab;
@@ -201,8 +273,8 @@ function waitForTabLoad(tabId) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error("Timed out waiting for the Auchan search page to load."));
-    }, 20000);
+      reject(new Error("Timed out waiting for the search page to load."));
+    }, 25000);
 
     function listener(updatedTabId, changeInfo) {
       if (updatedTabId === tabId && changeInfo.status === "complete") {
@@ -214,6 +286,54 @@ function waitForTabLoad(tabId) {
 
     chrome.tabs.onUpdated.addListener(listener);
   });
+}
+
+function getDefaultConfigForTab(tab) {
+  const hostname = getHostname(tab?.url);
+  if (/(\.|^)auchan\.fr$/i.test(hostname)) {
+    return { searchUrl: AUCHAN_SEARCH_URL };
+  }
+
+  return { searchUrl: "" };
+}
+
+function getConfigFromFields() {
+  return {
+    searchUrl: cleanText(elements.searchUrl.value),
+    nameSelector: cleanText(elements.nameSelector.value),
+    priceSelector: cleanText(elements.priceSelector.value),
+    addToCartSelector: cleanText(elements.addToCartSelector.value),
+    quantitySelector: cleanText(elements.quantitySelector.value)
+  };
+}
+
+function setConfigFields(config) {
+  elements.searchUrl.value = config.searchUrl || "";
+  elements.nameSelector.value = config.nameSelector || "";
+  elements.priceSelector.value = config.priceSelector || "";
+  elements.addToCartSelector.value = config.addToCartSelector || "";
+  elements.quantitySelector.value = config.quantitySelector || "";
+}
+
+function getShoppingList() {
+  return normalizeList(elements.productList.value.split(/\n+/));
+}
+
+function normalizeList(list) {
+  return list
+    .map((item) => cleanText(item))
+    .filter(Boolean);
+}
+
+function normalizeResult(product, query = "") {
+  return {
+    query,
+    name: product.name || "Unknown product",
+    price: product.price ?? null,
+    priceText: product.priceText || formatPrice(product.price),
+    quantity: product.quantity || 1,
+    url: product.url || ""
+  };
 }
 
 function setResults(results, statusMessage) {
@@ -298,7 +418,7 @@ function parsePrice(value) {
     return null;
   }
 
-  const match = String(value).match(/(\d{1,4}(?:[\s.,]\d{2})?)\s*€/);
+  const match = String(value).match(/(?:[€$£]\s*)?(\d{1,6}(?:[\s.,]\d{3})*(?:[.,]\d{2})?)(?:\s*[€$£])?/);
   if (!match) {
     return null;
   }
@@ -318,6 +438,7 @@ function setBusy(isBusy, message) {
   state.busy = isBusy;
   elements.scanPage.disabled = isBusy;
   elements.scanList.disabled = isBusy;
+  elements.saveConfig.disabled = isBusy;
   elements.spinner.hidden = !isBusy;
 
   if (message) {
@@ -328,4 +449,16 @@ function setBusy(isBusy, message) {
 function setStatus(message, isError = false) {
   elements.statusText.textContent = message;
   elements.statusText.style.color = isError ? "var(--danger)" : "var(--muted)";
+}
+
+function getHostname(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (_error) {
+    return "";
+  }
+}
+
+function cleanText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
 }

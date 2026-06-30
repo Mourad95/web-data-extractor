@@ -20,7 +20,7 @@
 
 body {
   width: 600px;
-  min-height: 520px;
+  min-height: 720px;
   margin: 0;
   background:
     radial-gradient(circle at 12% 0%, rgba(0, 168, 142, 0.18), transparent 32%),
@@ -35,9 +35,9 @@ button {
 
 .shell {
   display: flex;
-  min-height: 520px;
+  min-height: 720px;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 22px;
 }
 
@@ -61,18 +61,18 @@ h1 {
   line-height: 1.1;
 }
 
+h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
 .status-dot {
   width: 13px;
   height: 13px;
   border-radius: 999px;
   background: var(--accent);
   box-shadow: 0 0 0 6px rgba(0, 168, 142, 0.14), 0 0 22px rgba(19, 199, 168, 0.72);
-}
-
-.toolbar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
 }
 
 .button {
@@ -100,10 +100,100 @@ h1 {
 }
 
 .secondary,
-.export {
+.export,
+.compact {
   border-color: var(--line);
   background: rgba(16, 50, 62, 0.76);
   color: var(--text);
+}
+
+.compact {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.config-panel,
+.generic-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(12, 38, 48, 0.58);
+  padding: 14px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.config-form label:first-child {
+  grid-column: 1 / -1;
+}
+
+label {
+  display: grid;
+  gap: 5px;
+}
+
+label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(137, 220, 210, 0.2);
+  border-radius: 7px;
+  background: rgba(7, 24, 31, 0.78);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+input {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+textarea {
+  min-height: 112px;
+  max-height: 180px;
+  resize: vertical;
+  padding: 10px;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(19, 199, 168, 0.12);
+}
+
+::placeholder {
+  color: rgba(153, 183, 188, 0.72);
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.list-editor {
+  display: grid;
+  gap: 6px;
 }
 
 .feedback {
@@ -136,7 +226,7 @@ h1 {
 
 .results-panel {
   display: flex;
-  min-height: 0;
+  min-height: 260px;
   flex: 1;
   flex-direction: column;
   overflow: hidden;
@@ -258,5 +348,14 @@ th:nth-child(3) {
 
   .toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .config-form {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

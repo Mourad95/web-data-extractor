@@ -1,8 +1,10 @@
 "use strict";
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({
-    shoppingListResults: []
+chrome.runtime.onInstalled.addListener(async () => {
+  const current = await chrome.storage.local.get(["shoppingListResults", "siteConfigurations"]);
+  await chrome.storage.local.set({
+    shoppingListResults: current.shoppingListResults || [],
+    siteConfigurations: current.siteConfigurations || {}
   });
 });
 

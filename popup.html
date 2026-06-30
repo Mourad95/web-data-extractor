@@ -3,31 +3,72 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Auchan Drive Helper</title>
+    <title>E-commerce Price Scanner</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="shell">
       <header class="header">
         <div>
-          <p class="eyebrow">Auchan Drive</p>
-          <h1>Shopping Helper</h1>
+          <p class="eyebrow" id="domainLabel">Current website</p>
+          <h1>Price Scanner</h1>
         </div>
         <span class="status-dot" aria-hidden="true"></span>
       </header>
 
-      <section class="toolbar" aria-label="Scan controls">
-        <button id="scanPage" class="button primary" type="button">
-          <span>Start Scan</span>
-        </button>
-        <button id="scanList" class="button secondary" type="button">
-          <span>Scan Shopping List</span>
-        </button>
+      <section class="config-panel" aria-labelledby="configTitle">
+        <div class="section-heading">
+          <h2 id="configTitle">Configuration</h2>
+          <button id="saveConfig" class="button compact" type="button">Save Configuration</button>
+        </div>
+
+        <form id="configForm" class="config-form">
+          <label>
+            <span>Search URL</span>
+            <input id="searchUrl" type="url" placeholder="https://site.com/search?q={query}">
+          </label>
+          <label>
+            <span>Product name selector</span>
+            <input id="nameSelector" type="text" placeholder="Auto-detect">
+          </label>
+          <label>
+            <span>Price selector</span>
+            <input id="priceSelector" type="text" placeholder="Auto-detect">
+          </label>
+          <label>
+            <span>Add to cart selector</span>
+            <input id="addToCartSelector" type="text" placeholder="Auto-detect">
+          </label>
+          <label>
+            <span>Quantity selector</span>
+            <input id="quantitySelector" type="text" placeholder="Optional">
+          </label>
+        </form>
+      </section>
+
+      <section class="generic-panel" aria-labelledby="genericTitle">
+        <div class="section-heading">
+          <h2 id="genericTitle">Generic Scan</h2>
+        </div>
+
+        <div class="toolbar" aria-label="Scan controls">
+          <button id="scanPage" class="button primary" type="button">
+            <span>Scan Current Page</span>
+          </button>
+          <button id="scanList" class="button secondary" type="button">
+            <span>Scan Custom List</span>
+          </button>
+        </div>
+
+        <label class="list-editor">
+          <span>Custom product list</span>
+          <textarea id="productList" rows="6" spellcheck="false"></textarea>
+        </label>
       </section>
 
       <section class="feedback" aria-live="polite">
         <div id="spinner" class="spinner" hidden></div>
-        <p id="statusText">Open an Auchan page, then start a scan.</p>
+        <p id="statusText">Open an e-commerce page, then scan the current page.</p>
       </section>
 
       <section class="results-panel">

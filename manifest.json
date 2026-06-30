@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Auchan Drive Helper",
-  "description": "Scan Auchan product pages and build a cheapest-price shopping list.",
+  "name": "E-commerce Price Scanner",
+  "description": "Scan product pages and build a cheapest-price shopping list across e-commerce sites.",
   "version": "1.0.0",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://www.auchan.fr/*"],
+  "host_permissions": ["https://*/*", "http://*/*"],
   "action": {
-    "default_title": "Auchan Drive Helper",
+    "default_title": "E-commerce Price Scanner",
     "default_popup": "popup.html"
   },
   "background": {
@@ -14,7 +14,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.auchan.fr/*"],
+      "matches": ["https://*/*", "http://*/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
