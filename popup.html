@@ -3,111 +3,112 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>E-commerce Price Scanner</title>
+    <title>Web Data Extractor</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="shell">
       <header class="header">
         <div>
-          <p class="eyebrow" id="domainLabel">Current website</p>
-          <h1>Price Scanner</h1>
+          <p class="eyebrow" id="domainLabel">Current page</p>
+          <h1>Web Data Extractor</h1>
         </div>
         <span class="status-dot" aria-hidden="true"></span>
       </header>
 
-      <section class="config-panel" aria-labelledby="configTitle">
+      <section class="panel" aria-labelledby="locationTitle">
         <div class="section-heading">
-          <h2 id="configTitle">Configuration</h2>
-          <button id="saveConfig" class="button compact" type="button">Save Configuration</button>
+          <h2 id="locationTitle">Location</h2>
+        </div>
+        <p class="current-url" id="currentUrl">Loading current URL...</p>
+        <div class="inline-fields">
+          <label>
+            <span>URL</span>
+            <input id="targetUrl" type="url" placeholder="https://example.com/page">
+          </label>
+          <button id="navigateButton" class="button secondary" type="button">Navigate</button>
+        </div>
+      </section>
+
+      <section class="panel agent-panel" aria-labelledby="agentTitle">
+        <div class="section-heading">
+          <div class="agent-title">
+            <span id="agentStatusDot" class="agent-dot" aria-hidden="true"></span>
+            <h2 id="agentTitle">AI Agent</h2>
+          </div>
+          <button id="agentToggle" class="button compact" type="button">Start Agent</button>
+        </div>
+        <p class="agent-url" id="agentUrl">http://localhost:3456</p>
+        <div class="agent-log" id="agentLog" aria-live="polite">No recent commands.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="extractTitle">
+        <div class="section-heading">
+          <h2 id="extractTitle">Extraction</h2>
+          <button id="saveConfig" class="button compact" type="button">Save</button>
         </div>
 
         <form id="configForm" class="config-form">
-          <label>
-            <span>Search URL</span>
-            <input id="searchUrl" type="url" placeholder="https://site.com/search?q={query}">
+          <label class="wide">
+            <span>CSS Selector</span>
+            <input id="cssSelector" type="text" placeholder="h1, a.link, [data-id]">
           </label>
           <label>
-            <span>Product name selector</span>
-            <input id="nameSelector" type="text" placeholder="Auto-detect">
+            <span>Extract</span>
+            <select id="extractType">
+              <option value="text">text</option>
+              <option value="href">href</option>
+              <option value="src">src</option>
+              <option value="alt">alt</option>
+              <option value="data-*">data-*</option>
+              <option value="attribute">attribute</option>
+              <option value="innerHTML">innerHTML</option>
+            </select>
           </label>
           <label>
-            <span>Price selector</span>
-            <input id="priceSelector" type="text" placeholder="Auto-detect">
+            <span>Attribute</span>
+            <input id="attributeName" type="text" placeholder="Optional">
           </label>
-          <label>
-            <span>Add to cart selector</span>
-            <input id="addToCartSelector" type="text" placeholder="Auto-detect">
-          </label>
-          <label>
-            <span>Quantity selector</span>
-            <input id="quantitySelector" type="text" placeholder="Optional">
+          <label class="wide">
+            <span>Label</span>
+            <input id="labelName" type="text" placeholder="Optional">
           </label>
         </form>
-      </section>
 
-      <section class="generic-panel" aria-labelledby="genericTitle">
-        <div class="section-heading">
-          <h2 id="genericTitle">Generic Scan</h2>
+        <div class="toolbar">
+          <button id="extractButton" class="button primary" type="button">Extract Data</button>
+          <button id="clearResults" class="button secondary" type="button">Clear Results</button>
         </div>
-
-        <div class="toolbar" aria-label="Scan controls">
-          <button id="scanPage" class="button primary" type="button">
-            <span>Scan Current Page</span>
-          </button>
-          <button id="scanList" class="button secondary" type="button">
-            <span>Scan Custom List</span>
-          </button>
-        </div>
-
-        <label class="list-editor">
-          <span>Custom product list</span>
-          <textarea id="productList" rows="6" spellcheck="false"></textarea>
-        </label>
       </section>
 
       <section class="feedback" aria-live="polite">
         <div id="spinner" class="spinner" hidden></div>
-        <p id="statusText">Open an e-commerce page, then scan the current page.</p>
+        <p id="statusText">Enter a selector, then extract data from the current page.</p>
       </section>
 
-      <section class="results-panel">
+      <section class="results-panel" aria-labelledby="resultsTitle">
+        <div class="section-heading results-heading">
+          <h2 id="resultsTitle">Results</h2>
+          <button id="exportCsv" class="button compact" type="button" disabled>Export CSV</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th scope="col">Product</th>
-                <th scope="col">Price</th>
-                <th scope="col">Qty</th>
+                <th scope="col">#</th>
+                <th scope="col">Label</th>
+                <th scope="col">Value</th>
+                <th scope="col">URL/Context</th>
               </tr>
             </thead>
             <tbody id="resultsBody">
               <tr class="empty-row">
-                <td colspan="3">No results yet.</td>
+                <td colspan="4">No results yet.</td>
               </tr>
             </tbody>
           </table>
         </div>
-
-        <div class="summary">
-          <div>
-            <span>Subtotal</span>
-            <strong id="subtotal">0,00 €</strong>
-          </div>
-          <div>
-            <span>BIENVENUE20</span>
-            <strong id="discount">0,00 €</strong>
-          </div>
-          <div class="total">
-            <span>Total</span>
-            <strong id="total">0,00 €</strong>
-          </div>
-        </div>
       </section>
-
-      <footer class="footer">
-        <button id="exportResults" class="button export" type="button" disabled>Export</button>
-      </footer>
     </main>
 
     <script src="popup.js"></script>
